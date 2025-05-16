@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const MANAGER_PASSWORD = 'your_password_here'; // TODO: Replace with secure storage or env var in production
 
@@ -34,7 +34,7 @@ export default function ManagerDashboard() {
     }
   };
 
-  const fetchLeaves = async () => {
+  const fetchLeaves = useCallback(async () => {
     if (!employee || !fromDate || !toDate) {
       setLeaves([]);
       return;
@@ -53,17 +53,17 @@ export default function ManagerDashboard() {
         setLeaves([]);
         setMessage(data.error || '❌ Error fetching leaves.');
       }
-    } catch (error) {
+    } catch {
       setLeaves([]);
       setMessage('❌ Network error fetching leaves.');
     }
-  };
+  }, [employee, fromDate, toDate]);
 
   useEffect(() => {
     if (isAuthorized) {
       fetchLeaves();
     }
-  }, [employee, fromDate, toDate, isAuthorized]);
+  }, [employee, fromDate, toDate, isAuthorized, fetchLeaves]);
 
   const handleReview = async (timestamp: string, action: 'Approved' | 'Rejected') => {
     try {
