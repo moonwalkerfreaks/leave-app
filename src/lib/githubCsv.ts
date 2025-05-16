@@ -1,13 +1,22 @@
 import { parse } from 'csv-parse/sync';
 import { stringify } from 'csv-stringify/sync';
 
+// GitHub API endpoint for your raw CSV file
 const token = process.env.GITHUB_TOKEN!;
-const repo = process.env.GITHUB_REPO!;
-const owner = process.env.GITHUB_OWNER!;
-const filePath = process.env.GITHUB_FILE_PATH!;
 const apiBase = `https://api.github.com/repos/moonwalkerfreaks/leave-app-data/contents/data/leave-log.csv?ref=main`;
 
-export async function fetchCSV(): Promise<{ content: any[], sha: string }> {
+// Define the structure of each leave record
+export interface LeaveRecord {
+  name: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  status: string;
+  timestamp: string;
+}
+
+// Fetch and decode CSV from GitHub
+export async function fetchCSV(): Promise<{ content: LeaveRecord[]; sha: string }> {
   const res = await fetch(apiBase, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -15,11 +24,18 @@ export async function fetchCSV(): Promise<{ content: any[], sha: string }> {
     },
   });
 
-  if (!res.ok) throw new Error('Failed to fetch CSV');
+  if (!res.ok) {
+    throw new Error(`Failed to fetch CSV: ${res.status} ${res.statusText}`);
+  }
 
-  const data = await res.json();
+  const data: {
+    content: string;
+    sha: string;
+  } = await res.json();
+
   const csvContent = Buffer.from(data.content, 'base64').toString('utf-8');
-  const records = parse(csvContent, {
+
+  const records: LeaveRecord[] = parse(csvContent, {
     columns: true,
     skip_empty_lines: true,
   });
@@ -27,7 +43,8 @@ export async function fetchCSV(): Promise<{ content: any[], sha: string }> {
   return { content: records, sha: data.sha };
 }
 
-export async function updateCSV(records: any[]) {
+// Update CSV file on GitHub
+export async function updateCSV(records: LeaveRecord[]): Promise<void> {
   const csvString = stringify(records, { header: true });
   const { sha } = await fetchCSV();
 
@@ -44,5 +61,8 @@ export async function updateCSV(records: any[]) {
     }),
   });
 
-  if (!res.ok) throw new Error('Failed to update CSV on GitHub');
+  if (!res.ok) {
+    throw new Error(`Failed to update CSV on GitHub: ${res.status} ${res.statusText}`);
+  }
 }
+

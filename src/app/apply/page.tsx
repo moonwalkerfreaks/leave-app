@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 export default function ApplyLeave() {
   const [employee, setEmployee] = useState('');
-  const [dayOrHour, setDayOrHour] = useState('Day');
+  const [dayOrHour, setDayOrHour] = useState<'Day' | 'Hour'>('Day');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [fromTime, setFromTime] = useState('');
@@ -12,7 +12,7 @@ export default function ApplyLeave() {
   const [leaveType, setLeaveType] = useState('Sick Leave');
   const [message, setMessage] = useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const payload = {
@@ -31,15 +31,16 @@ export default function ApplyLeave() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+
       const data = await res.json();
       if (res.ok) {
-        setMessage('Leave applied successfully');
-        // Reset form or keep values
+        setMessage('✅ Leave applied successfully.');
+        // Reset form fields if needed
       } else {
-        setMessage(data.error || 'Error applying leave');
+        setMessage(`❌ ${data.error || 'Error applying leave'}`);
       }
-    } catch (error) {
-      setMessage('Network error');
+    } catch {
+      setMessage('❌ Network error while applying leave.');
     }
   }
 
@@ -55,11 +56,10 @@ export default function ApplyLeave() {
           required
           className="block w-full border p-2 rounded"
         >
-          {/* Populate options with your 20 employee names */}
           <option value="">Select Employee</option>
           <option value="John Doe">John Doe</option>
           <option value="Jane Smith">Jane Smith</option>
-          {/* Add all employees here */}
+          {/* Add more employees as needed */}
         </select>
       </label>
 
@@ -67,7 +67,7 @@ export default function ApplyLeave() {
         Leave for:
         <select
           value={dayOrHour}
-          onChange={(e) => setDayOrHour(e.target.value)}
+          onChange={(e) => setDayOrHour(e.target.value as 'Day' | 'Hour')}
           className="block w-full border p-2 rounded"
         >
           <option value="Day">Day</option>
@@ -134,7 +134,6 @@ export default function ApplyLeave() {
           <option value="Sick Leave">Sick Leave</option>
           <option value="Casual Leave">Casual Leave</option>
           <option value="Earned Leave">Earned Leave</option>
-          {/* Add more types as needed */}
         </select>
       </label>
 
@@ -145,7 +144,7 @@ export default function ApplyLeave() {
         Apply
       </button>
 
-      {message && <p className="mt-4">{message}</p>}
+      {message && <p className="mt-4 text-sm text-gray-700">{message}</p>}
     </form>
   );
 }
