@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Leave } from '@/types/leave';
 import { fetchCSV, updateCSV } from '@/lib/githubCsv';
 
 export async function POST(req: NextRequest) {
@@ -15,15 +16,22 @@ export async function POST(req: NextRequest) {
       toTime,
     } = body;
 
-    if (!employee || !leaveType || !dayOrHour || !fromDate || (!toDate && dayOrHour === 'Day')) {
+    // Basic validation for required fields
+    if (
+      !employee ||
+      !leaveType ||
+      !dayOrHour ||
+      !fromDate ||
+      (dayOrHour === 'Day' && !toDate)
+    ) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const { content: currentData } = await fetchCSV();
+    // Fetch current CSV data and type it as Leave[]
+    const { content: currentData } = await fetchCSV() as { content: Leave[] };
 
-    const timestamp = new Date().toISOString();
-
-    const newRecord = {
+    // Create a new record typed as Leave
+    const newRecord: Leave = {
       Employee: employee,
       LeaveType: leaveType,
       DayOrHour: dayOrHour,
@@ -32,16 +40,19 @@ export async function POST(req: NextRequest) {
       FromTime: dayOrHour === 'Hour' ? fromTime : '',
       ToTime: dayOrHour === 'Hour' ? toTime : '',
       Status: 'Pending',
-      Timestamp: timestamp,
+      Timestamp: new Date().toISOString(),
     };
 
     currentData.push(newRecord);
 
     await updateCSV(currentData);
 
-    return NextResponse.json({ message: 'Leave application submitted', timestamp }, { status: 201 });
-  } catch (error: any) {
-    console.error(error);
+    return NextResponse.json({ message: 'Leave application submitted', timestamp: newRecord.Timestamp }, { status: 201 });
+  } catch (error) {
+    // Use unknown here and then safely check error message to avoid 'any'
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(errorMessage);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+

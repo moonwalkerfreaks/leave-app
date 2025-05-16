@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Leave } from '@/types/leave';
 import { fetchCSV } from '@/lib/githubCsv';
 
 export async function GET(req: NextRequest) {
@@ -13,10 +14,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Employee name is required' }, { status: 400 });
     }
 
-    const { content } = await fetchCSV();
+    // Explicitly type content as Leave[]
+    const { content } = await fetchCSV() as { content: Leave[] };
 
-    // Filter based on query
-    const filtered = content.filter((entry: any) => {
+    // Filter based on query parameters
+    const filtered = content.filter((entry: Leave) => {
       const isEmployeeMatch = entry.Employee.toLowerCase() === employee.toLowerCase();
       const isStatusMatch = status ? entry.Status === status : true;
 
@@ -28,8 +30,10 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ leaves: filtered }, { status: 200 });
-  } catch (error: any) {
-    console.error(error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(errorMessage);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
