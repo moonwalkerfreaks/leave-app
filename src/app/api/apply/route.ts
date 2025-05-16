@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Leave } from '@/types/leave';
+import type { Leave } from '@/types/leave';
 import { fetchCSV, updateCSV } from '@/lib/githubCsv';
 
 export async function POST(req: NextRequest) {
@@ -24,15 +24,22 @@ export async function POST(req: NextRequest) {
       !fromDate ||
       (dayOrHour === 'Day' && !toDate)
     ) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
     }
 
-    // Fetch current CSV data and type it as Leave[]
-    const { content: currentData } = await fetchCSV() as { content: Leave[] };
+    // Fetch current CSV data and destructure content and sha
+    const { content: currentData, sha } = await fetchCSV();
 
-    // Create a new record typed as Leave
+    // Assuming currentData is LeaveRecord[] which has the same fields as Leave,
+    // If not, you should transform here.
+    // For now, treat it as Leave[] for simplicity
+
+    // Create a new Leave record
     const newRecord: Leave = {
-      Employee: employee,
+      EmployeeName: employee, // Match the property name in Leave interface
       LeaveType: leaveType,
       DayOrHour: dayOrHour,
       FromDate: fromDate,
@@ -41,18 +48,31 @@ export async function POST(req: NextRequest) {
       ToTime: dayOrHour === 'Hour' ? toTime : '',
       Status: 'Pending',
       Timestamp: new Date().toISOString(),
+      AppliedAt: new Date().toISOString(),
+      CancelledAt: '',
+      ManagerActionAt: '',
     };
 
+    // Add the new record
     currentData.push(newRecord);
 
-    await updateCSV(currentData);
+    // Update CSV with new data and existing sha for optimistic concurrency
+    await updateCSV(currentData, sha);
 
-    return NextResponse.json({ message: 'Leave application submitted', timestamp: newRecord.Timestamp }, { status: 201 });
+    return NextResponse.json(
+      {
+        message: 'Leave application submitted',
+        timestamp: newRecord.Timestamp,
+      },
+      { status: 201 }
+    );
   } catch (error) {
-    // Use unknown here and then safely check error message to avoid 'any'
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(errorMessage);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Apply leave error:', errorMessage);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
